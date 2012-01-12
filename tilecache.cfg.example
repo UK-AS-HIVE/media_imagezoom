@@ -1,0 +1,22 @@
+# Example configuration for cutting and serving image files using
+# TileCache.  This could potentially be useful as a template for
+# automatic generation from media_imagezoom
+
+# NOTE: currently, the module simply chops the image in real-time
+# using Drupal's image API. TileCache adds an extra dependency,
+# but is stable and mature and possibly more performant.  In other words,
+# this is still for evaluation only.
+
+# Standard cache on disk (or memory, or s3, etc.)
+[cache]
+type=Disk
+base=/tmp/tilecache
+
+# Here's where the module would write out the various layers.
+# The image dimensions need to be specified in both bbox and filebounds.
+[lichfield]
+type=ImageLayer
+file=/var/www/sites/default/files/Chad002sm.jpg
+bbox=0,0,2400,3200
+filebounds=0,0,2400,3200
+
