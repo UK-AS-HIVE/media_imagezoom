@@ -1,0 +1,36 @@
+<?php
+
+function media_imagezoom_menu()
+{
+	$items['media/tms/1.0.0/%/%/%/%'] = array(
+		'page callback' => '_media_imagezoom_tile',
+		'page arguments' => array(3,4,5,6),
+		'type' => MENU_CALLBACK,
+		'access arguments' => array('access content'),
+	);
+	return $items;
+}
+
+function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
+{
+	//return implode(array($fid,$zoom_level,$x,$y), ' - ');
+	$media = file_load($fid);
+
+	if ($media->type == 'image')
+	{
+		$image = image_load($media->uri);
+		$full_tile_width = $image->info['width'] / pow(2.0,$zoom_level);
+		$y = intval(str_replace('.jpg', '', $y));
+		
+		image_crop($image, $x*$full_tile_width, $image->info['height']-($y+1)*$full_tile_width, $full_tile_width, $full_tile_width);
+		image_resize($image, 256, 256);
+		$temp_tile_name = 'public://' . $zoom_level . '/' . $x . '/' . $y . '/' . $media->filename;
+		image_save($image, $temp_tile_name);
+		drupal_add_http_header('Content-type', $media->filemime);
+		exit;
+	}
+	drupal_set_message('Cannot tile non-image media');
+	return print_r($media,true);
+}
+
+

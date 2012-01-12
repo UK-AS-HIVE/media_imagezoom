@@ -1,0 +1,12 @@
+name = Media Image Zoom
+description = Provides deep-zoom capabilities for large images in OpenLayers
+package = Media
+core = 7.x
+dependencies[] = media
+dependencies[] = openlayers
+
+; Information added by drupal.org packaging script on 2011-10-12
+version = "7.x-1.x"
+core = "7.x"
+project = "media_imagezoom"
+
