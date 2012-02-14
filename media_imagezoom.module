@@ -33,4 +33,291 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 	return print_r($media,true);
 }
 
+// ripped from media.browser.inc - media_browser_list
+function media_imagezoom_getimages() {
+  //TODO: temporary just to test iterating media items
+
+  $params = drupal_get_query_parameters();
+  // How do we validate these?  I don't know.
+  // I think PDO should protect them, but I'm not 100% certain.
+  module_load_include('inc', 'media', 'includes/media.browser');
+  array_walk_recursive($params, '_media_recursive_check_plain');
+
+  $types = isset($params['types']) ? $params['types'] : NULL;
+  $url_include_patterns = isset($params['url_include_patterns']) ? $params['url_include_patterns'] : NULL;
+  $url_exclude_patterns = isset($params['url_exclude_patterns']) ? $params['url_exclude_patterns'] : NULL;
+
+  $start = isset($params['start']) ? $params['start'] : 0;
+  $limit = isset($params['limit']) ? $params['limit'] : media_variable_get('browser_pager_limit');
+
+  $query = db_select('file_managed', 'f');
+  $query->fields('f', array('fid'));
+  $query->range($start, $limit);
+  $query->orderBy('f.timestamp', 'DESC');
+
+  // Add conditions based on file type *or* allowed extensions.
+  $condition = $query;
+  if (!empty($types) && !empty($params['file_extensions'])) {
+    $condition = db_or();
+  }
+  if (!empty($types)) {
+    $condition->condition('f.type', $types, 'IN');
+  }
+  if (!empty($params['file_extensions'])) {
+    $extensions = array_filter(explode(' ', $params['file_extensions']));
+    foreach ($extensions as $extension) {
+      $condition->condition('f.uri', '%' . db_like('.' . $extension), 'LIKE');
+    }
+  }
+  if ($condition instanceof DatabaseCondition) {
+    $query->condition($condition);
+  }
+
+  if ($url_include_patterns) {
+    $query->condition('f.uri', '%' . db_like($url_include_patterns) . '%', 'LIKE');
+    // Insert stream related restrictions here.
+  }
+  if ($url_exclude_patterns) {
+    $query->condition('f.uri', '%' . db_like($url_exclude_patterns) . '%', 'NOT LIKE');
+  }
+
+  // @todo Implement granular editorial access: http://drupal.org/node/696970.
+  //   In the meantime, protect information about private files from being
+  //   discovered by unprivileged users. See also media_view_page().
+  if (!user_access('administer media')) {
+    $query->condition('f.uri', db_like('private://') . '%', 'NOT LIKE');
+  }
+
+  $query->condition('f.status', FILE_STATUS_PERMANENT);
+
+  foreach (array_keys(media_get_hidden_stream_wrappers()) as $name) {
+    $query->condition('f.uri', db_like($name . '://') . '%', 'NOT LIKE');
+  }
+
+  $fids = $query->execute()->fetchCol();
+  $files = file_load_multiple($fids);
+
+  $images = array();
+  foreach ($files as $file) {
+    if ($file->type === 'image')
+      $images[] = $file;
+  }
+
+  return $images;
+}
+
+/**
+ * Implements hook_openlayers_layers().
+ */
+function media_imagezoom_openlayers_layers()
+{
+  $items = array();
+  foreach (media_imagezoom_getimages() as $image)
+  {
+    $items = array_merge($items, media_imagezoom_build_layer($image) );
+  }
+  return $items;
+}
+
+function media_imagezoom_build_layer($image_file)
+{
+  $items = array();
+  $openlayers_layers = new stdClass;
+  $openlayers_layers->disabled = FALSE; /* Edit this to true to make a default openlayers_layers disabled initially */
+  $openlayers_layers->api_version = 1;
+  $openlayers_layers->name = 'media_imagezoom_' . $image_file->fid;
+  $openlayers_layers->title = 'Media Image Zoom ' . $image_file->filename;
+  $openlayers_layers->description = 'Media Image Zoom layer of image ' . $image_file->filename;
+  $openlayers_layers->data = array(
+    //'base_url' => 'http://128.163.123.35/cgi-bin/tilecache.cgi/',
+    'base_url' => base_path() . 'media/tms/',
+    'layername' => $image_file->fid,
+    'baselayer' => $image_file->fid,
+    'type' => 'jpg',
+    'resolutions' => array(
+      0 => 156543.0339,
+      1 => 78271.51695,
+      2 => 39135.758475,
+      3 => 19567.8792375,
+      4 => 9783.93961875,
+      5 => 4891.969809375,
+      6 => 2445.9849046875,
+      7 => 1222.9924523438,
+      8 => 611.49622617188,
+      9 => 305.74811308594,
+      10 => 152.87405654297,
+      11 => 76.437028271484,
+      12 => 38.218514135742,
+      13 => 19.109257067871,
+      14 => 9.5546285339355,
+      15 => 4.7773142669678,
+      16 => 2.3886571334839,
+      17 => 1.1943285667419,
+      18 => 0.59716428337097,
+    ),
+    'wrapDateLine' => 0,
+    'layer_type' => 'openlayers_layer_type_tms',
+  );
+  $items["media_imagezoom_" . $image_file->fid] = $openlayers_layers;
+  return $items;
+}
+
+// TODO: implement hook_openlayers_maps
+/*
+function media_imagezoom_build_map($image_file)
+{
+  $items = array();
+  $openlayers_maps = new stdClass;
+  $openlayers_maps->disabled = FALSE; // Edit this to true to make a default openlayers_maps disabled initially
+  $openlayers_maps->api_version = 1;
+  $openlayers_maps->name = 'test_lichfield_1basic_map';
+  $openlayers_maps->title = 'Media Image Zoom - ' . $image_file->name;
+  $openlayers_maps->description = 'blah blah';
+  $openlayers_maps->data = array(
+    'width' => 'auto',
+    'height' => '400px',
+    'image_path' => 'sites/all/modules/openlayers/themes/default_dark/img/',
+    'css_path' => 'sites/all/modules/openlayers/themes/default_dark/style.css',
+    'proxy_host' => '',
+    'hide_empty_map' => 0,
+    'center' => array(
+      'initial' => array(
+        'centerpoint' => '0, 0',
+        'zoom' => '2',
+      ),
+      'restrict' => array(
+        'restrictextent' => 0,
+        'restrictedExtent' => '',
+      ),
+    ),
+    'behaviors' => array(
+      'openlayers_behavior_keyboarddefaults' => array(),
+      'openlayers_behavior_attribution' => array(
+        'seperator' => '',
+      ),
+      'openlayers_behavior_layerswitcher' => array(
+        'ascending' => 1,
+        'roundedCorner' => 1,
+        'roundedCornerColor' => '#222222',
+      ),
+      'openlayers_behavior_navigation' => array(
+        'zoomWheelEnabled' => 1,
+        'zoomBoxEnabled' => 1,
+        'documentDrag' => 0,
+      ),
+      'openlayers_behavior_panzoombar' => array(
+        'zoomWorldIcon' => 0,
+        'panIcons' => 1,
+      ),
+    ),
+    'default_layer' => 'test_tilecache_lichfield',
+    'layers' => array(
+      'test_tilecache_lichfield' => 'test_tilecache_lichfield',
+    ),
+    'layer_weight' => array(
+      'lichfield_deep_zoom_openlayers_1' => '0',
+      'openlayers_geojson_picture_this' => '0',
+    ),
+    'layer_styles' => array(
+      'openlayers_geojson_picture_this' => '0',
+      'lichfield_deep_zoom_openlayers_1' => '0',
+    ),
+    'layer_styles_select' => array(
+      'openlayers_geojson_picture_this' => '0',
+      'lichfield_deep_zoom_openlayers_1' => '0',
+    ),
+    'layer_activated' => array(
+      'openlayers_geojson_picture_this' => 0,
+      'lichfield_deep_zoom_openlayers_1' => 0,
+    ),
+    'layer_switcher' => array(
+      'openlayers_geojson_picture_this' => 0,
+      'lichfield_deep_zoom_openlayers_1' => 0,
+    ),
+    'projection' => '900913',
+    'displayProjection' => '4326',
+    'styles' => array(
+      'default' => 'default',
+      'select' => 'default_select',
+      'temporary' => 'default',
+    ),
+    'map_name' => 'test_lichfield_1basic_map',
+  );
+  $items["test_lichfield_1basic_map"] = $openlayers_maps;
+  return $items;
+}
+*/
+
+/**
+ * Implements hook_ctools_plugin_api().
+ */
+function media_imagezoom_ctools_plugin_api($module, $api) {
+  // Define plugins for OpenLayers plugins api
+  if ($module == "openlayers") {
+    switch ($api) {
+      case 'openlayers_maps':
+        return array('version' => 1);
+
+      case 'openlayers_layers':
+        return array('version' => 1);
+
+    }
+  }
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function openlayers_test_views_api() {
+  return array(
+    'api' => 2,
+  );
+}
+
+/**
+ * Implements hook_openlayers_maps().
+ */
+/*function openlayers_test_openlayers_maps() {
+  module_load_include('inc', 'openlayers_test', 'includes/openlayers_test.maps');
+  return _openlayers_test_openlayers_maps();
+}*/
+
+/**
+ * Implements hook_views_default_views().
+ */
+/*function openlayers_test_views_default_views() {
+  module_load_include('inc', 'openlayers_test', 'includes/openlayers_test.views');
+  return _openlayers_test_views_default_views();
+}*/
+
+/**
+ * Impements hook_openlayers_map_preprocess_alter().
+ */
+/*function openlayers_test_openlayers_map_preprocess_alter(&$map) {
+  // For testing purposes, display a message on the only the Test
+  // page, and only once.
+  static $performed = FALSE;
+  if (!$performed && $_GET['q'] == 'admin/structure/openlayers/test') {
+    drupal_set_message(t('OpenLayers preprocess map alter hook fired.'));
+    $performed = TRUE;
+  }
+
+  // Add stop render for JS testing
+  if ($_GET['q'] == 'admin/structure/openlayers/test/js') {
+    $map['stop_render'] = TRUE;
+  }
+}*/
+
+/**
+ * Impements hook_openlayers_map_alter().
+ */
+/*function openlayers_test_openlayers_map_alter(&$map) {
+  // For testing purposes, display a message on the only the Test
+  // page, and only once.
+  static $performed = FALSE;
+  if (!$performed && $_GET['q'] == 'admin/structure/openlayers/test') {
+    drupal_set_message(t('OpenLayers map alter hook fired.'));
+    $performed = TRUE;
+  }
+}*/
 
