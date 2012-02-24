@@ -145,11 +145,13 @@ function media_imagezoom_build_layer($image_file)
   $openlayers_layers->description = 'Media Image Zoom layer of image ' . $image_file->filename;
   $openlayers_layers->data = array(
     //'base_url' => 'http://128.163.123.35/cgi-bin/tilecache.cgi/',
+    'baselayer' => FALSE,
     'base_url' => base_path() . 'media/tms/',
     'layername' => $image_file->fid,
-    'baselayer' => $image_file->fid,
+    //'baselayer' => $image_file->fid,
     'type' => 'jpg',
-    'resolutions' => array(
+    'transparent' => TRUE,
+    /*'resolutions' => array(
       0 => 156543.0339,
       1 => 78271.51695,
       2 => 39135.758475,
@@ -169,6 +171,11 @@ function media_imagezoom_build_layer($image_file)
       16 => 2.3886571334839,
       17 => 1.1943285667419,
       18 => 0.59716428337097,
+    ),*/
+    'params' => array(
+      'isBaseLayer' => FALSE,
+      'layers' => 'media_imagezoom_' . $image_file->fid,
+      'opacity' => 0.5,
     ),
     'wrapDateLine' => 0,
     'layer_type' => 'openlayers_layer_type_tms',
