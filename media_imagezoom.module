@@ -129,29 +129,30 @@ function media_imagezoom_openlayers_layers()
   $items = array();
   foreach (media_imagezoom_getimages() as $image)
   {
+    // expose image as both base layer and overlay
+    $items = array_merge($items, media_imagezoom_build_layer($image, TRUE) );
     $items = array_merge($items, media_imagezoom_build_layer($image) );
   }
   return $items;
 }
 
-function media_imagezoom_build_layer($image_file)
+function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
 {
   $items = array();
   $openlayers_layers = new stdClass;
   $openlayers_layers->disabled = FALSE; /* Edit this to true to make a default openlayers_layers disabled initially */
   $openlayers_layers->api_version = 1;
-  $openlayers_layers->name = 'media_imagezoom_' . $image_file->fid;
+  $openlayers_layers->name = ($base_layer?'base_':'') . 'media_imagezoom_' . $image_file->fid;
   $openlayers_layers->title = $image_file->filename;
-  $openlayers_layers->description = 'Media Image Zoom layer of image ' . $image_file->filename;
+  $openlayers_layers->description = 'Media Image Zoom' . ($base_layer?' base':'') . ' layer of image ' . $image_file->filename;
   $openlayers_layers->data = array(
-    //'base_url' => 'http://128.163.123.35/cgi-bin/tilecache.cgi/',
-    'baselayer' => FALSE,
+    'baselayer' => $base_layer,
     'base_url' => base_path() . 'media/tms/',
     'layername' => $image_file->fid,
     //'baselayer' => $image_file->fid,
     'type' => 'jpg',
     'transparent' => TRUE,
-    /*'resolutions' => array(
+    'resolutions' => array(
       0 => 156543.0339,
       1 => 78271.51695,
       2 => 39135.758475,
@@ -171,16 +172,16 @@ function media_imagezoom_build_layer($image_file)
       16 => 2.3886571334839,
       17 => 1.1943285667419,
       18 => 0.59716428337097,
-    ),*/
+    ),
     'params' => array(
-      'isBaseLayer' => FALSE,
+      'isBaseLayer' => $base_layer,
       'layers' => 'media_imagezoom_' . $image_file->fid,
       'opacity' => 0.5,
     ),
     'wrapDateLine' => 0,
     'layer_type' => 'openlayers_layer_type_tms',
   );
-  $items["media_imagezoom_" . $image_file->fid] = $openlayers_layers;
+  $items[(($base_layer)?"base_":"") . "media_imagezoom_" . $image_file->fid] = $openlayers_layers;
   return $items;
 }
 
