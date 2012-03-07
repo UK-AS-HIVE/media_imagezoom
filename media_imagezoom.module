@@ -27,6 +27,9 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 	{
 		watchdog('media_imagezoom', 'Serving cached tile ' . $tile_name);
 
+		if (function_exists('drush_main')) {
+			return;
+		}
 		drupal_goto(file_create_url($tile_name));
 	}
 
@@ -41,6 +44,9 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 
 		//$image->source = $tile_name;
 		image_save($image, $tile_name);
+		if (function_exists('drush_main')) {
+			return;
+		}
 		drupal_goto(file_create_url($tile_name));
 	}
 
