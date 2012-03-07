@@ -16,9 +16,9 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 	$y = intval(str_replace('.jpg', '', $y));
 
 	//return implode(array($fid,$zoom_level,$x,$y), ' - ');
-	$media = file_load($fid);
 
-	$tile_name = 'public://tiles/' . str_replace('.jpg', '', $media->filename) . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+
+	$tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
 	// check if tile has already been created
 	watchdog('media_imagezoom', 'checking for tile at ' . $tile_name);
@@ -32,6 +32,8 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 		}
 		drupal_goto(file_create_url($tile_name));
 	}
+
+	$media = file_load($fid);
 
 	if ($media->type == 'image')
 	{
@@ -153,7 +155,8 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
   $openlayers_layers->description = 'Media Image Zoom' . ($base_layer?' base':'') . ' layer of image ' . $image_file->filename;
   $openlayers_layers->data = array(
     'baselayer' => $base_layer,
-    'base_url' => base_path() . 'media/tms/',
+    //'base_url' => base_path() . 'media/tms/',
+    'base_url' => base_path() . 'sites/default/files/tiles/tms/',
     'layername' => $image_file->fid,
     //'baselayer' => $image_file->fid,
     'type' => 'jpg',
