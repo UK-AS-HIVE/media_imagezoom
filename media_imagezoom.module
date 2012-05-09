@@ -11,6 +11,43 @@ function media_imagezoom_menu()
 	return $items;
 }
 
+function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level)
+{
+	$media = file_load($fid);
+
+	if ($media->type != 'image') {
+		return;
+	}
+
+	$image = image_load($media->uri);
+	$pow2 = pow(2.0,$zoom_level);
+	$full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
+	
+	// squarify
+	image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
+	image_resize($image, 256*$pow2, 256*$pow2);
+
+	// save temp
+	//@file_delete(drupal_realpath('public://tiles/tmpResizedForCutting.jpg'), TRUE);
+	image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
+	
+	for ($x = 0; $x < $pow2; ++$x)
+	for ($y = 0; $y < $pow2; ++$y)
+	{
+		
+		$tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+
+		$tile_cut = image_load('public://tiles/tmpResizedForCutting.jpg');
+
+		image_crop($tile_cut, $x*256, ($pow2-$y-1)*256, 256, 256);
+		@drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
+
+		//$image->source = $tile_name;
+		image_save($tile_cut, $tile_name);
+	}
+
+}
+
 function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 {
 	$y = intval(str_replace('.jpg', '', $y));
@@ -38,9 +75,15 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 	if ($media->type == 'image')
 	{
 		$image = image_load($media->uri);
-		$full_tile_width = $image->info['width'] / pow(2.0,$zoom_level);
+		$full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
 		
-		image_crop($image, $x*$full_tile_width, $image->info['height']-($y+1)*$full_tile_width, $full_tile_width, $full_tile_width);
+		/*if ($image->info['width'] < $full_tile_width)
+			image_crop($image, $full_tile_width, $full_tile_width);*/
+		// squarify
+		image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
+		/*image_resize($image, 256*pow(2,$zoom_level), 256*pow(2,$zoom_level));
+		image_crop($image, 256*$x, 256*(pow(2,$zoom_level)-1),256,256);*/
+		image_crop($image, $x*$full_tile_width, $image->info['height']-($y+1)*$full_tile_width, $full_tile_width-1, $full_tile_width-1);
 		image_resize($image, 256, 256);
 		@drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
 
@@ -168,7 +211,7 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
       3 => 19567.8792375,
       4 => 9783.93961875,
       5 => 4891.969809375,
-      6 => 2445.9849046875,
+      /*6 => 2445.9849046875,
       7 => 1222.9924523438,
       8 => 611.49622617188,
       9 => 305.74811308594,
@@ -180,7 +223,7 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
       15 => 4.7773142669678,
       16 => 2.3886571334839,
       17 => 1.1943285667419,
-      18 => 0.59716428337097,
+      18 => 0.59716428337097,*/
     ),
     'params' => array(
       'isBaseLayer' => $base_layer,
