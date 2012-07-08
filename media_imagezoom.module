@@ -74,7 +74,7 @@ function media_imagezoom_getimages() {
 
   $query = db_select('file_managed', 'f');
   $query->fields('f', array('fid'));
-  $query->range($start, $limit);
+  //$query->range($start, $limit);
   $query->orderBy('f.timestamp', 'DESC');
 
   // Add conditions based on file type *or* allowed extensions.
@@ -138,6 +138,7 @@ function media_imagezoom_openlayers_layers()
   {
     $items = array_merge($items, media_imagezoom_build_layer($image) );
   }
+  dpm('total media_imagezoom image count: ' . count($items));
   return $items;
 }
 
@@ -151,10 +152,9 @@ function media_imagezoom_build_layer($image_file)
   $openlayers_layers->title = $image_file->filename;
   $openlayers_layers->description = 'Media Image Zoom layer of image ' . $image_file->filename;
   $openlayers_layers->data = array(
-    //'base_url' => 'http://128.163.123.35/cgi-bin/tilecache.cgi/',
+    'baselayer' => TRUE,
     'base_url' => base_path() . 'media/tms/',
     'layername' => $image_file->fid,
-    'baselayer' => $image_file->fid,
     'type' => 'jpg',
     'resolutions' => array(
       0 => 156543.0339,
@@ -177,6 +177,11 @@ function media_imagezoom_build_layer($image_file)
       17 => 1.1943285667419,
       18 => 0.59716428337097,
     ),
+    'params' => array(
+      'isBaseLayer' => TRUE,
+      'layers' => 'media_imagezoom_' . $image_file->fid,
+      'opacity' => 0.5,
+    ),
     'wrapDateLine' => 0,
     'layer_type' => 'openlayers_layer_type_tms',
   );
@@ -184,20 +189,130 @@ function media_imagezoom_build_layer($image_file)
   return $items;
 }
 
-// TODO: implement hook_openlayers_maps
-/*
-function media_imagezoom_build_map($image_file)
-{
-  $items = array();
-  $openlayers_maps = new stdClass;
-  $openlayers_maps->disabled = FALSE; // Edit this to true to make a default openlayers_maps disabled initially
-  $openlayers_maps->api_version = 1;
-  $openlayers_maps->name = 'test_lichfield_1basic_map';
-  $openlayers_maps->title = 'Media Image Zoom - ' . $image_file->name;
-  $openlayers_maps->description = 'blah blah';
-  $openlayers_maps->data = array(
+/**
+ * Implementation of hook_openlayers_presets().
+ */
+function media_imagezoom_openlayers_presets() {
+  $presets = array();
+
+  $imagezoom_map = array(
+    'projection' => '4326',
     'width' => 'auto',
-    'height' => '400px',
+    'default_layer' => 'openlayers_default_wms',
+    'height' => '300px',
+    'center' => array(
+      'lat' => '0',
+      'lon' => '0',
+      'zoom' => '2',
+    ),
+    'options' => array(
+      'displayProjection' => '4326',
+    ),
+    'controls' => array(
+      'LayerSwitcher' => TRUE,
+      'Navigation' => TRUE,
+      'PanZoomBar' => TRUE,
+      'MousePosition' => TRUE,
+    ),
+  );
+
+  $presets['media_imagezoom_map'] = array(
+    'preset_name' => 'media_imagezoom_map',
+    'preset_title' => t('Media Image-zoom Map'),
+    'preset_description' => t('Provides OpenLayers view of large images'),
+    'preset_data' => $imagezoom_map,
+  );
+
+  return $presets;
+}
+
+/**
+ * Implements hook_ctools_plugin_api().
+ */
+function media_imagezoom_ctools_plugin_api($module, $api) {
+  // Define plugins for OpenLayers plugins api
+  if ($module == "openlayers") {
+    switch ($api) {
+      case 'openlayers_layers':
+        return array('version' => 1);
+
+    }
+  }
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function openlayers_test_views_api() {
+  return array(
+    'api' => 2,
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function media_imagezoom_field_formatter_info() {
+  $formatters = array();
+  $formatters['media_imagezoom_image'] = array(
+    'label' => t('OpenLayers deep-image zoom'),
+    'field types' => array('file', 'image'),
+    'settings' => array(),
+  );
+  return $formatters;
+} 
+
+/**
+ * Implements hook_file_formatter_view().
+ */
+function media_imagezoom_file_formatter_info() {
+  // TODO: see if adding settings here will make a difference, maybe specify 'file type'
+}
+
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function media_imagezoom_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $settings = $display['settings'];
+  $element = array();
+  foreach ($items as $delta => $item) {
+    if ($field['type'] == 'image'
+      && $item['image_dimensions']['width'] > 1920
+      && $item['image_dimensions']['height'] > 1920) {
+      $element[$delta] = array(
+        '#theme' => 'imagezoom_openlayers',
+        '#file' => $item,
+      );
+    }
+  }
+  return $element;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function media_imagezoom_theme($existing, $type, $theme, $path) {
+  return array(
+    'imagezoom_openlayers' => array(
+      'function' => 'theme_media_imagezoom_formatter_imagezoom_openlayers',
+      'render element' => 'element',
+    ),
+  );
+}
+
+function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
+  dpm($element);
+
+  $map = new stdClass;
+  $map->disabled = FALSE; // Edit this to true to make a default map disabled initially
+  $map->api_version = 1;
+  $map->name = 'media_imagezoom_' . $element['element']['#file']['fid'];
+  $map->title = 'Media Image Zoom - ' . $element['element']['#file']['filename'];
+  $map->description = 'blah blah';
+  $map->data = array(
+    'width' => 'auto',
+    'height' => '1000px',
     'image_path' => 'sites/all/modules/openlayers/themes/default_dark/img/',
     'css_path' => 'sites/all/modules/openlayers/themes/default_dark/style.css',
     'proxy_host' => '',
@@ -217,11 +332,6 @@ function media_imagezoom_build_map($image_file)
       'openlayers_behavior_attribution' => array(
         'seperator' => '',
       ),
-      'openlayers_behavior_layerswitcher' => array(
-        'ascending' => 1,
-        'roundedCorner' => 1,
-        'roundedCornerColor' => '#222222',
-      ),
       'openlayers_behavior_navigation' => array(
         'zoomWheelEnabled' => 1,
         'zoomBoxEnabled' => 1,
@@ -232,29 +342,24 @@ function media_imagezoom_build_map($image_file)
         'panIcons' => 1,
       ),
     ),
-    'default_layer' => 'test_tilecache_lichfield',
+    'default_layer' => $map->name,
     'layers' => array(
-      'test_tilecache_lichfield' => 'test_tilecache_lichfield',
+      $map->name => $map->name,
     ),
     'layer_weight' => array(
-      'lichfield_deep_zoom_openlayers_1' => '0',
-      'openlayers_geojson_picture_this' => '0',
+      $map->name => '0',
     ),
     'layer_styles' => array(
-      'openlayers_geojson_picture_this' => '0',
-      'lichfield_deep_zoom_openlayers_1' => '0',
+      $map->name => '0',
     ),
     'layer_styles_select' => array(
-      'openlayers_geojson_picture_this' => '0',
-      'lichfield_deep_zoom_openlayers_1' => '0',
+      $map->name => '0',
     ),
     'layer_activated' => array(
-      'openlayers_geojson_picture_this' => 0,
-      'lichfield_deep_zoom_openlayers_1' => 0,
+      $map->name => 0,
     ),
     'layer_switcher' => array(
-      'openlayers_geojson_picture_this' => 0,
-      'lichfield_deep_zoom_openlayers_1' => 0,
+      $map->name => 0,
     ),
     'projection' => '900913',
     'displayProjection' => '4326',
@@ -263,83 +368,9 @@ function media_imagezoom_build_map($image_file)
       'select' => 'default_select',
       'temporary' => 'default',
     ),
-    'map_name' => 'test_lichfield_1basic_map',
+    'map_name' => $map->name,
   );
-  $items["test_lichfield_1basic_map"] = $openlayers_maps;
-  return $items;
+
+  return openlayers_render_map($map);
 }
-*/
-
-/**
- * Implements hook_ctools_plugin_api().
- */
-function media_imagezoom_ctools_plugin_api($module, $api) {
-  // Define plugins for OpenLayers plugins api
-  if ($module == "openlayers") {
-    switch ($api) {
-      case 'openlayers_maps':
-        return array('version' => 1);
-
-      case 'openlayers_layers':
-        return array('version' => 1);
-
-    }
-  }
-}
-
-/**
- * Implements hook_views_api().
- */
-function openlayers_test_views_api() {
-  return array(
-    'api' => 2,
-  );
-}
-
-/**
- * Implements hook_openlayers_maps().
- */
-/*function openlayers_test_openlayers_maps() {
-  module_load_include('inc', 'openlayers_test', 'includes/openlayers_test.maps');
-  return _openlayers_test_openlayers_maps();
-}*/
-
-/**
- * Implements hook_views_default_views().
- */
-/*function openlayers_test_views_default_views() {
-  module_load_include('inc', 'openlayers_test', 'includes/openlayers_test.views');
-  return _openlayers_test_views_default_views();
-}*/
-
-/**
- * Impements hook_openlayers_map_preprocess_alter().
- */
-/*function openlayers_test_openlayers_map_preprocess_alter(&$map) {
-  // For testing purposes, display a message on the only the Test
-  // page, and only once.
-  static $performed = FALSE;
-  if (!$performed && $_GET['q'] == 'admin/structure/openlayers/test') {
-    drupal_set_message(t('OpenLayers preprocess map alter hook fired.'));
-    $performed = TRUE;
-  }
-
-  // Add stop render for JS testing
-  if ($_GET['q'] == 'admin/structure/openlayers/test/js') {
-    $map['stop_render'] = TRUE;
-  }
-}*/
-
-/**
- * Impements hook_openlayers_map_alter().
- */
-/*function openlayers_test_openlayers_map_alter(&$map) {
-  // For testing purposes, display a message on the only the Test
-  // page, and only once.
-  static $performed = FALSE;
-  if (!$performed && $_GET['q'] == 'admin/structure/openlayers/test') {
-    drupal_set_message(t('OpenLayers map alter hook fired.'));
-    $performed = TRUE;
-  }
-}*/
 
