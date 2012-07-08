@@ -11,14 +11,51 @@ function media_imagezoom_menu()
 	return $items;
 }
 
+function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level)
+{
+	$media = file_load($fid);
+
+	if ($media->type != 'image') {
+		return;
+	}
+
+	$image = image_load($media->uri);
+	$pow2 = pow(2.0,$zoom_level);
+	$full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
+	
+	// squarify
+	image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
+	image_resize($image, 256*$pow2, 256*$pow2);
+
+	// save temp
+	//@file_delete(drupal_realpath('public://tiles/tmpResizedForCutting.jpg'), TRUE);
+	image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
+	
+	for ($x = 0; $x < $pow2; ++$x)
+	for ($y = 0; $y < $pow2; ++$y)
+	{
+		
+		$tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+
+		$tile_cut = image_load('public://tiles/tmpResizedForCutting.jpg');
+
+		image_crop($tile_cut, $x*256, ($pow2-$y-1)*256, 256, 256);
+		@drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
+
+		//$image->source = $tile_name;
+		image_save($tile_cut, $tile_name);
+	}
+
+}
+
 function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 {
 	$y = intval(str_replace('.jpg', '', $y));
 
 	//return implode(array($fid,$zoom_level,$x,$y), ' - ');
-	$media = file_load($fid);
 
-	$tile_name = 'public://tiles/' . str_replace('.jpg', '', $media->filename) . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+
+	$tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
 	// check if tile has already been created
 	watchdog('media_imagezoom', 'checking for tile at ' . $tile_name);
@@ -27,30 +64,37 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
 	{
 		watchdog('media_imagezoom', 'Serving cached tile ' . $tile_name);
 
-		// TODO: a redirect to let the httpd serve would be more efficient than loading and serving through PHP
-		$image_data = file_get_contents($tile_name);
-		drupal_add_http_header('Content-type', $media->filemime);
-		print $image_data;
-		drupal_exit();
+		if (function_exists('drush_main')) {
+			return;
+		}
+		drupal_goto(file_create_url($tile_name));
 	}
+
+	$media = file_load($fid);
 
 	if ($media->type == 'image')
 	{
 		$image = image_load($media->uri);
-		$full_tile_width = $image->info['width'] / pow(2.0,$zoom_level);
+		$full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
 		
-		image_crop($image, $x*$full_tile_width, $image->info['height']-($y+1)*$full_tile_width, $full_tile_width, $full_tile_width);
+		/*if ($image->info['width'] < $full_tile_width)
+			image_crop($image, $full_tile_width, $full_tile_width);*/
+		// squarify
+		image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
+		/*image_resize($image, 256*pow(2,$zoom_level), 256*pow(2,$zoom_level));
+		image_crop($image, 256*$x, 256*(pow(2,$zoom_level)-1),256,256);*/
+		image_crop($image, $x*$full_tile_width, $image->info['height']-($y+1)*$full_tile_width, $full_tile_width-1, $full_tile_width-1);
 		image_resize($image, 256, 256);
 		@drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
 
 		//$image->source = $tile_name;
 		image_save($image, $tile_name);
-		//dsm($image);
-		$image_data = file_get_contents($tile_name);
-		drupal_add_http_header('Content-type', $media->filemime);
-		print $image_data;
-		drupal_exit();
+		if (function_exists('drush_main')) {
+			return;
+		}
+		drupal_goto(file_create_url($tile_name));
 	}
+
 	drupal_set_message('Cannot tile non-image media');
 	return print_r($media,true);
 }
@@ -136,26 +180,29 @@ function media_imagezoom_openlayers_layers()
   $items = array();
   foreach (media_imagezoom_getimages() as $image)
   {
+    // expose image as both base layer and overlay
+    $items = array_merge($items, media_imagezoom_build_layer($image, TRUE) );
     $items = array_merge($items, media_imagezoom_build_layer($image) );
   }
   dpm('total media_imagezoom image count: ' . count($items));
   return $items;
 }
 
-function media_imagezoom_build_layer($image_file)
+function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
 {
   $items = array();
   $openlayers_layers = new stdClass;
   $openlayers_layers->disabled = FALSE; /* Edit this to true to make a default openlayers_layers disabled initially */
   $openlayers_layers->api_version = 1;
-  $openlayers_layers->name = 'media_imagezoom_' . $image_file->fid;
+  $openlayers_layers->name = ($base_layer?'base_':'') . 'media_imagezoom_' . $image_file->fid;
   $openlayers_layers->title = $image_file->filename;
-  $openlayers_layers->description = 'Media Image Zoom layer of image ' . $image_file->filename;
+  $openlayers_layers->description = 'Media Image Zoom' . ($base_layer?' base':'') . ' layer of image ' . $image_file->filename;
   $openlayers_layers->data = array(
-    'baselayer' => TRUE,
-    'base_url' => base_path() . 'media/tms/',
+    'baselayer' => $base_layer,
+    'base_url' => base_path() . 'sites/default/files/tiles/tms/',
     'layername' => $image_file->fid,
     'type' => 'jpg',
+    'transparent' => TRUE,
     'resolutions' => array(
       0 => 156543.0339,
       1 => 78271.51695,
@@ -163,7 +210,7 @@ function media_imagezoom_build_layer($image_file)
       3 => 19567.8792375,
       4 => 9783.93961875,
       5 => 4891.969809375,
-      6 => 2445.9849046875,
+      /*6 => 2445.9849046875,
       7 => 1222.9924523438,
       8 => 611.49622617188,
       9 => 305.74811308594,
@@ -175,7 +222,12 @@ function media_imagezoom_build_layer($image_file)
       15 => 4.7773142669678,
       16 => 2.3886571334839,
       17 => 1.1943285667419,
-      18 => 0.59716428337097,
+      18 => 0.59716428337097,*/
+    ),
+    'params' => array(
+      'isBaseLayer' => $base_layer,
+      'layers' => 'media_imagezoom_' . $image_file->fid,
+      'opacity' => 0.5,
     ),
     'params' => array(
       'isBaseLayer' => TRUE,
@@ -185,7 +237,7 @@ function media_imagezoom_build_layer($image_file)
     'wrapDateLine' => 0,
     'layer_type' => 'openlayers_layer_type_tms',
   );
-  $items["media_imagezoom_" . $image_file->fid] = $openlayers_layers;
+  $items[(($base_layer)?"base_":"") . "media_imagezoom_" . $image_file->fid] = $openlayers_layers;
   return $items;
 }
 
