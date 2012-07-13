@@ -184,7 +184,6 @@ function media_imagezoom_openlayers_layers()
     $items = array_merge($items, media_imagezoom_build_layer($image, TRUE) );
     $items = array_merge($items, media_imagezoom_build_layer($image) );
   }
-  dpm('total media_imagezoom image count: ' . count($items));
   return $items;
 }
 
@@ -239,43 +238,6 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
   );
   $items[(($base_layer)?"base_":"") . "media_imagezoom_" . $image_file->fid] = $openlayers_layers;
   return $items;
-}
-
-/**
- * Implementation of hook_openlayers_presets().
- */
-function media_imagezoom_openlayers_presets() {
-  $presets = array();
-
-  $imagezoom_map = array(
-    'projection' => '4326',
-    'width' => 'auto',
-    'default_layer' => 'openlayers_default_wms',
-    'height' => '300px',
-    'center' => array(
-      'lat' => '0',
-      'lon' => '0',
-      'zoom' => '2',
-    ),
-    'options' => array(
-      'displayProjection' => '4326',
-    ),
-    'controls' => array(
-      'LayerSwitcher' => TRUE,
-      'Navigation' => TRUE,
-      'PanZoomBar' => TRUE,
-      'MousePosition' => TRUE,
-    ),
-  );
-
-  $presets['media_imagezoom_map'] = array(
-    'preset_name' => 'media_imagezoom_map',
-    'preset_title' => t('Media Image-zoom Map'),
-    'preset_description' => t('Provides OpenLayers view of large images'),
-    'preset_data' => $imagezoom_map,
-  );
-
-  return $presets;
 }
 
 /**
@@ -354,8 +316,6 @@ function media_imagezoom_theme($existing, $type, $theme, $path) {
 }
 
 function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
-  dpm($element);
-
   $map = new stdClass;
   $map->disabled = FALSE; // Edit this to true to make a default map disabled initially
   $map->api_version = 1;
