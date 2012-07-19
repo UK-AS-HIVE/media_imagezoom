@@ -11,10 +11,17 @@ function media_imagezoom_precache_drush_command() {
 }
 
 function drush_media_imagezoom_precache_precache_media_tiles() {
+  $q = db_select('file_managed', 'f');
+  $q->fields('f', array('fid'));
+  $q->condition('f.status', FILE_STATUS_PERMANENT);
+  $q->condition('f.uri', 'public://%', 'LIKE');
+  $fids = $q->execute()->fetchCol();
+  
   for ($zoom_level = 0; $zoom_level < 11; ++$zoom_level) {
     drush_print('Computing zoom level ' . $zoom_level . '...');
 
-    for ($fid = 1; $fid<38; ++$fid) {
+    //for ($fid = 1; $fid<$file_count; ++$fid) {
+    foreach ($fids as $fid) {
       drush_print('...image ' . $fid);
       _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level);
       /*$dim = pow(2,$zoom_level);
