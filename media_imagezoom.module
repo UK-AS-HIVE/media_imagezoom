@@ -13,14 +13,21 @@ function media_imagezoom_menu()
 
 function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level)
 {
+  // if already exists, don't recreate
+	$pow2 = pow(2.0,$zoom_level);
+	$max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level==0?'0':(intval($pow2-1))) . '/' . ($zoom_level==0?'0':intval($pow2-1)) . '.jpg';
+  if (file_exists($max_tile_name)) {
+    return;
+  }
+
 	$media = file_load($fid);
 
 	if ($media->type != 'image') {
 		return;
 	}
 
+
 	$image = image_load($media->uri);
-	$pow2 = pow(2.0,$zoom_level);
 	$full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
 	
 	// squarify
