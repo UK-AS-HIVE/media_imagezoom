@@ -21,7 +21,7 @@ jQuery(document).ready(function()
   jQuery('#lichfieldLayerFader').prepend(opacitySlider);
   jQuery('#lichfieldLayerFader').prepend(baseSelect);
 
-  jQuery('#opacitySlider').slider({slide: function(event,ui) {setLayerOpacity(ui.value/100.0);} });
+  jQuery('#opacitySlider').slider({value:50, slide: function(event,ui) {setLayerOpacity(ui.value/100.0);} });
 
   jQuery('select.baseLayerSelect').change(function() {
     var ol = jQuery('#' + jQuery('.openlayers-map').attr('id')).data('openlayers').openlayers;
