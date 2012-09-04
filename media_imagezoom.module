@@ -343,6 +343,7 @@ function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
         'zoomWorldIcon' => 0,
         'panIcons' => 1,
       ),
+      'openlayers_behavior_fullscreen' => array(),
     ),
     'default_layer' => 'base_' . $map->name,
     'layers' => array(

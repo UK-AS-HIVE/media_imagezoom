@@ -1,7 +1,7 @@
 jQuery(document).ready(function()
 {
   var map = Drupal.settings.openlayers.maps[jQuery('.openlayers-map').attr('id')];
-  jQuery('.openlayers-map .olControlPanZoomBar').prepend('<div id="lichfieldLayerFader" style="position: relative; left: 50px;" class="clearfix"></div>');
+  jQuery('.openlayers-map').prepend('<div id="lichfieldLayerFader" class="olControlNoSelect" style="position: relative; left: 50px; z-index: 1001; height: 0;"  unselectable="on"></div>');
   var baseSelect = '<select class="baseLayerSelect">';
   var opacitySlider = '<div id="opacitySlider" style="display: inline-block; width: 160px; font-size: 10px; margin: 5px;"></div>';
   var overlaySelect = '<select class="overlayLayerSelect">';
