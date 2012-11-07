@@ -1,112 +1,120 @@
 <?php
+/**
+ * @file
+ * Functions for tile cutting and rendering OpenLayers viewer
+ */
 
-function media_imagezoom_menu()
-{
-	$items['media/tms/1.0.0/%/%/%/%'] = array(
-		'page callback' => '_media_imagezoom_tile',
-		'page arguments' => array(3,4,5,6),
-		'type' => MENU_CALLBACK,
-		'access arguments' => array('access content'),
-	);
-	return $items;
+/**
+ * Implements hook_menu().
+ */
+function media_imagezoom_menu() {
+  $items['media/tms/1.0.0/%/%/%/%'] = array(
+    'page callback' => '_media_imagezoom_tile',
+    'page arguments' => array(3,4,5,6),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  return $items;
 }
 
-function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level)
-{
-  // if already exists, don't recreate
-	$pow2 = pow(2.0,$zoom_level);
-	$max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level==0?'0':(intval($pow2-1))) . '/' . ($zoom_level==0?'0':intval($pow2-1)) . '.jpg';
+/**
+ * Cuts a file into tiles if it hasn't already been, using Image API
+ *
+ * @deprecated in favor of the drush commands
+ */
+function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
+  // If already exists, don't recreate
+  $pow2 = pow(2.0,$zoom_level);
+  $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0?'0':(intval($pow2 - 1))) . '/' . ($zoom_level == 0?'0':intval($pow2 - 1)) . '.jpg';
   if (file_exists($max_tile_name)) {
     return;
   }
 
-	$media = file_load($fid);
+  $media = file_load($fid);
 
-	if ($media->type != 'image') {
-		return;
-	}
+  if ($media->type != 'image') {
+    return;
+  }
 
 
-	$image = image_load($media->uri);
-	$full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
-	
-	// squarify
-	image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
-	image_resize($image, 256*$pow2, 256*$pow2);
+  $image = image_load($media->uri);
+  $full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
+  
+  // Squarify
+  image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
+  image_resize($image, 256 * $pow2, 256 * $pow2);
 
-	// save temp
-	//@file_delete(drupal_realpath('public://tiles/tmpResizedForCutting.jpg'), TRUE);
-	image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
-	
-	for ($x = 0; $x < $pow2; ++$x)
-	for ($y = 0; $y < $pow2; ++$y)
-	{
-		
-		$tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+  // Save temp
+  image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
+  
+  for ($x = 0; $x < $pow2; ++$x)
+  for ($y = 0; $y < $pow2; ++$y)
+  {
+    
+    $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
-		$tile_cut = image_load('public://tiles/tmpResizedForCutting.jpg');
+    $tile_cut = image_load('public://tiles/tmpResizedForCutting.jpg');
 
-		image_crop($tile_cut, $x*256, ($pow2-$y-1)*256, 256, 256);
-		@drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
+    image_crop($tile_cut, $x * 256, ($pow2 - $y - 1) * 256, 256, 256);
+    @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
 
-		//$image->source = $tile_name;
-		image_save($tile_cut, $tile_name);
-	}
+    image_save($tile_cut, $tile_name);
+  }
 
 }
 
-function _media_imagezoom_tile($fid, $zoom_level, $x, $y)
-{
-	$y = intval(str_replace('.jpg', '', $y));
+/**
+ * Callback function for serving TMS tiles.  Automatically generates
+ * tile if it doesn't exist.
+ *
+ * @deprecated It's absurdly faster to let the web server serve tiles
+ * directly, and simply fail if they haven't been generated yet, rather
+ * than bootstrapping Drupal to serve each tile.
+ */
+function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
+  $y = intval(str_replace('.jpg', '', $y));
 
-	//return implode(array($fid,$zoom_level,$x,$y), ' - ');
 
+  $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
-	$tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+  // Check if tile has already been created
+  watchdog('media_imagezoom', 'checking for tile at ' . $tile_name);
 
-	// check if tile has already been created
-	watchdog('media_imagezoom', 'checking for tile at ' . $tile_name);
+  if (file_exists($tile_name))
+  {
+    watchdog('media_imagezoom', 'Serving cached tile ' . $tile_name);
 
-	if (file_exists($tile_name))
-	{
-		watchdog('media_imagezoom', 'Serving cached tile ' . $tile_name);
+    if (function_exists('drush_main')) {
+      return;
+    }
+    drupal_goto(file_create_url($tile_name));
+  }
 
-		if (function_exists('drush_main')) {
-			return;
-		}
-		drupal_goto(file_create_url($tile_name));
-	}
+  $media = file_load($fid);
 
-	$media = file_load($fid);
+  if ($media->type == 'image')
+  {
+    $image = image_load($media->uri);
+    $full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
+    
+    // Squarify
+    image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
+    image_crop($image, $x * $full_tile_width, $image->info['height'] - ($y+1) * $full_tile_width, $full_tile_width - 1, $full_tile_width - 1);
+    image_resize($image, 256, 256);
+    @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
 
-	if ($media->type == 'image')
-	{
-		$image = image_load($media->uri);
-		$full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
-		
-		/*if ($image->info['width'] < $full_tile_width)
-			image_crop($image, $full_tile_width, $full_tile_width);*/
-		// squarify
-		image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
-		/*image_resize($image, 256*pow(2,$zoom_level), 256*pow(2,$zoom_level));
-		image_crop($image, 256*$x, 256*(pow(2,$zoom_level)-1),256,256);*/
-		image_crop($image, $x*$full_tile_width, $image->info['height']-($y+1)*$full_tile_width, $full_tile_width-1, $full_tile_width-1);
-		image_resize($image, 256, 256);
-		@drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
+    image_save($image, $tile_name);
+    if (function_exists('drush_main')) {
+      return;
+    }
+    drupal_goto(file_create_url($tile_name));
+  }
 
-		//$image->source = $tile_name;
-		image_save($image, $tile_name);
-		if (function_exists('drush_main')) {
-			return;
-		}
-		drupal_goto(file_create_url($tile_name));
-	}
-
-	drupal_set_message('Cannot tile non-image media');
-	return print_r($media,true);
+  drupal_set_message('Cannot tile non-image media');
+  return print_r($media,true);
 }
 
-// ripped from media.browser.inc - media_browser_list
+// Ripped from media.browser.inc - media_browser_list
 function media_imagezoom_getimages() {
   //TODO: temporary just to test iterating media items
 
@@ -125,7 +133,6 @@ function media_imagezoom_getimages() {
 
   $query = db_select('file_managed', 'f');
   $query->fields('f', array('fid'));
-  //$query->range($start, $limit);
   $query->orderBy('f.timestamp', 'DESC');
 
   // Add conditions based on file type *or* allowed extensions.
@@ -181,6 +188,9 @@ function media_imagezoom_getimages() {
   return $images;
 }
 
+/**
+ * Helper function to create a single layer for the OpenLayers renderer.
+ */
 function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
 {
   $items = array();
@@ -194,7 +204,6 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
     'title' => $openlayers_layers->title,
     'baselayer' => $base_layer,
     'base_url' => base_path() . 'sites/default/files/tiles/tms/',
-    //'base_url' => base_path() . 'media/tms/',
     'layername' => $image_file->fid,
     'type' => 'jpg',
     'transparent' => TRUE,
@@ -234,15 +243,6 @@ function media_imagezoom_ctools_plugin_api($module, $api) {
 
     }
   }
-}
-
-/**
- * Implements hook_views_api().
- */
-function openlayers_test_views_api() {
-  return array(
-    'api' => 2,
-  );
 }
 
 /**
@@ -303,6 +303,9 @@ function media_imagezoom_theme($existing, $type, $theme, $path) {
   );
 }
 
+/**
+ *
+ */
 function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
   $map = new stdClass;
   $map->disabled = FALSE; // Edit this to true to make a default map disabled initially
@@ -347,22 +350,16 @@ function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
     ),
     'default_layer' => 'base_' . $map->name,
     'layers' => array(
-      //$map->name => $map->name,
     ),
     'layer_weight' => array(
-      //$map->name => '0',
     ),
     'layer_styles' => array(
-      //$map->name => '0',
     ),
     'layer_styles_select' => array(
-      //$map->name => '0',
     ),
     'layer_activated' => array(
-      //$map->name => 0,
     ),
     'layer_switcher' => array(
-      //$map->name => 0,
     ),
     'projection' => '900913',
     'displayProjection' => '4326',
