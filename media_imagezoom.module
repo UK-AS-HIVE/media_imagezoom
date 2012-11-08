@@ -42,12 +42,12 @@ function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
 
   $image = image_load($media->uri);
   $full_tile_width = max($image->info['width'], $image->info['height']) / pow(2.0, $zoom_level);
-  
-  // Squarify
-  image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE );
+
+  // Squarify.
+  image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE);
   image_resize($image, 256 * $pow2, 256 * $pow2);
 
-  // Save temp
+  // Save temporary image.
   image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
 
   for ($x = 0; $x < $pow2; ++$x) {
@@ -66,8 +66,9 @@ function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
 }
 
 /**
- * Callback function for serving TMS tiles.  Automatically generates
- * tile if it doesn't exist.
+ * Callback function for serving TMS tiles.
+ *
+ * Automatically generates tile if it doesn't exist.
  *
  * @deprecated It's absurdly faster to let the web server serve tiles
  * directly, and simply fail if they haven't been generated yet, rather
@@ -79,7 +80,7 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
 
   $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
-  // Check if tile has already been created
+  // Check if tile has already been created.
   watchdog('media_imagezoom', 'checking for tile at ' . $tile_name);
 
   if (file_exists($tile_name)) {
@@ -96,9 +97,9 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
   if ($media->type == 'image') {
     $image = image_load($media->uri);
     $full_tile_width = max($image->info['width'], $image->info['height']) / pow(2.0, $zoom_level);
-    
-    // Squarify
-    image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE );
+
+    // Squarify.
+    image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE);
     image_crop($image, $x * $full_tile_width, $image->info['height'] - ($y + 1) * $full_tile_width, $full_tile_width - 1, $full_tile_width - 1);
     image_resize($image, 256, 256);
     @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
@@ -114,9 +115,9 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
   return print_r($media, true);
 }
 
-// Ripped from media.browser.inc - media_browser_list
+// Ripped from media.browser.inc - media_browser_list.
 function media_imagezoom_getimages() {
-  //TODO: temporary just to test iterating media items
+  //TODO: temporary just to test iterating media items.
 
   $params = drupal_get_query_parameters();
   // How do we validate these?  I don't know.
@@ -179,8 +180,9 @@ function media_imagezoom_getimages() {
 
   $images = array();
   foreach ($files as $file) {
-    if ($file->type === 'image')
+    if ($file->type === 'image') {
       $images[] = $file;
+    }
   }
 
   print (count($images) . "\n");
@@ -193,7 +195,7 @@ function media_imagezoom_getimages() {
  */
 function media_imagezoom_build_layer($image_file, $base_layer = FALSE) {
   $items = array();
-  $openlayers_layers = new stdClass;
+  $openlayers_layers = new stdClass();
   $openlayers_layers->disabled = FALSE; /* Edit this to true to make a default openlayers_layers disabled initially */
   $openlayers_layers->api_version = 1;
   $openlayers_layers->name = ($base_layer?'base_':'') . 'media_imagezoom_' . $image_file->fid;
@@ -234,7 +236,7 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE) {
  * Implements hook_ctools_plugin_api().
  */
 function media_imagezoom_ctools_plugin_api($module, $api) {
-  // Define plugins for OpenLayers plugins api
+  // Define plugins for OpenLayers plugins api.
   if ($module == "openlayers") {
     switch ($api) {
       case 'openlayers_layers':
@@ -260,13 +262,14 @@ function media_imagezoom_field_formatter_info() {
     'settings' => array(),
   );
   return $formatters;
-} 
+}
 
 /**
  * Implements hook_file_formatter_view().
  */
 function media_imagezoom_file_formatter_info() {
-  // TODO: see if adding settings here will make a difference, maybe specify 'file type'
+  // TODO: see if adding settings here will make a difference, maybe specify
+  // 'file type'.
 }
 
 
@@ -303,11 +306,12 @@ function media_imagezoom_theme($existing, $type, $theme, $path) {
 }
 
 /**
- *
+ * Theme function for formatter.
  */
 function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
-  $map = new stdClass;
-  $map->disabled = FALSE; // Edit this to true to make a default map disabled initially
+  $map = new stdClass();
+  // Edit this to true to make a default map disabled initially.
+  $map->disabled = FALSE; 
   $map->api_version = 1;
   $map->name = 'media_imagezoom_' . $element['element']['files'][0]['fid'];
   $map->title = 'Media Image Zoom - ' . $element['element']['files'][0]['filename'];
@@ -348,18 +352,12 @@ function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
       'openlayers_behavior_fullscreen' => array(),
     ),
     'default_layer' => 'base_' . $map->name,
-    'layers' => array(
-    ),
-    'layer_weight' => array(
-    ),
-    'layer_styles' => array(
-    ),
-    'layer_styles_select' => array(
-    ),
-    'layer_activated' => array(
-    ),
-    'layer_switcher' => array(
-    ),
+    'layers' => array(),
+    'layer_weight' => array(),
+    'layer_styles' => array(),
+    'layer_styles_select' => array(),
+    'layer_activated' => array(),
+    'layer_switcher' => array(),
     'projection' => '900913',
     'displayProjection' => '4326',
     'styles' => array(
@@ -380,7 +378,7 @@ function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
 }
 
 /**
- * Implement hook_openlayers_map_alter().
+ * Implements hook_openlayers_map_alter().
  *
  * Necessary for on-the-fly layer creation.
  */
@@ -388,10 +386,9 @@ function media_imagezoom_openlayers_map_alter(&$map) {
 
   foreach ($map['media_imagezoom_files'] as $delta => $image) {
     $image_file = file_load($image['fid']);
-    $map['layers']['base_media_imagezoom_' . $image['fid']] = media_imagezoom_build_layer($image_file, true)->data;
-    $map['layers']['media_imagezoom_' . $image['fid']] = media_imagezoom_build_layer($image_file, false)->data;
+    $map['layers']['base_media_imagezoom_' . $image['fid']] = media_imagezoom_build_layer($image_file, TRUE)->data;
+    $map['layers']['media_imagezoom_' . $image['fid']] = media_imagezoom_build_layer($image_file, FALSE)->data;
   }
 
   return;
 }
-

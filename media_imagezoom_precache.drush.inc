@@ -40,17 +40,18 @@ function drush_media_imagezoom_precache_precache_media_tiles() {
       $elapsed_time = microtime(TRUE) - $start_time;
       drush_print('(took ' . $elapsed_time . " seconds)");
       drush_print("              \r");
-      
     }
   }
 }
 
 /**
- * Create tiles using ImageMagick commandline utilities instead of Drupal
- * ImageAPI.  This is significantly faster in most cases.
+ * Create tiles using ImageMagick instead of Drupal ImageAPI.
+ *
+ * This executes ImageMagick's commandline utilities, and is significantly
+ * faster in most cases.
  */
 function drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_level) {
-  $pow2 = pow(2.0,$zoom_level);
+  $pow2 = pow(2.0, $zoom_level);
   $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0?'0':(intval($pow2 - 1))) . '/' . ($zoom_level == 0?'0':intval($pow2 - 1)) . '.jpg';
 
   // If already exists, don't recreate.
@@ -68,7 +69,7 @@ function drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_leve
   $full_tile_width = max($image->info['width'], $image->info['height']) / pow(2.0, $zoom_level);
 
   // Squarify.
-  image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE );
+  image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE);
   image_resize($image, 256 * $pow2, 256 * $pow2);
 
   // Save temporary image.
@@ -76,22 +77,23 @@ function drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_leve
 
   // Now batch crop with ImageMagick on the commandline.
   exec('convert ' . drupal_realpath('public://tiles/tmpResizedForCutting.jpg') . ' -crop 256x256 ' . drupal_realpath('public://tiles/tmpTile.jpg'));
-  
+
   $i = 0;
 
-  for ($y = $pow2 - 1; $y >= 0; --$y)
-  for ($x = 0; $x < $pow2; ++$x) {
-    
-    $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+  for ($y = $pow2 - 1; $y >= 0; --$y) {
+    for ($x = 0; $x < $pow2; ++$x) {
+      $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
-    @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
-    if ($zoom_level == 0) {
-      rename(drupal_realpath('public://tiles/tmpTile.jpg'), drupal_realpath($tile_name));
-    } else {
-      rename(drupal_realpath('public://tiles/tmpTile-'.$i.'.jpg'), drupal_realpath($tile_name));
+      @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
+      if ($zoom_level == 0) {
+        rename(drupal_realpath('public://tiles/tmpTile.jpg'), drupal_realpath($tile_name));
+      }
+      else {
+        rename(drupal_realpath('public://tiles/tmpTile-' . $i . '.jpg'), drupal_realpath($tile_name));
+      }
+
+      $i++;
     }
-
-    $i++;
   }
 
 }
