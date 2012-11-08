@@ -18,14 +18,17 @@ function media_imagezoom_menu() {
 }
 
 /**
- * Cuts a file into tiles if it hasn't already been, using Image API
+ * Cuts a file into tiles if it hasn't already been, using Image API.
  *
  * @deprecated in favor of the drush commands
  */
 function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
-  // If already exists, don't recreate
-  $pow2 = pow(2.0,$zoom_level);
+  $pow2 = pow(2.0, $zoom_level);
+  // Check if the last tile to be generated for this set already exists.
+  // If it does, assume the tiles already exist, and don't waste time
+  // recreating.
   $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0?'0':(intval($pow2 - 1))) . '/' . ($zoom_level == 0?'0':intval($pow2 - 1)) . '.jpg';
+
   if (file_exists($max_tile_name)) {
     return;
   }
@@ -38,27 +41,26 @@ function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
 
 
   $image = image_load($media->uri);
-  $full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
+  $full_tile_width = max($image->info['width'], $image->info['height']) / pow(2.0, $zoom_level);
   
   // Squarify
-  image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
+  image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE );
   image_resize($image, 256 * $pow2, 256 * $pow2);
 
   // Save temp
   image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
-  
-  for ($x = 0; $x < $pow2; ++$x)
-  for ($y = 0; $y < $pow2; ++$y)
-  {
-    
-    $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
-    $tile_cut = image_load('public://tiles/tmpResizedForCutting.jpg');
+  for ($x = 0; $x < $pow2; ++$x) {
+    for ($y = 0; $y < $pow2; ++$y) {
+      $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
-    image_crop($tile_cut, $x * 256, ($pow2 - $y - 1) * 256, 256, 256);
-    @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
+      $tile_cut = image_load('public://tiles/tmpResizedForCutting.jpg');
 
-    image_save($tile_cut, $tile_name);
+      image_crop($tile_cut, $x * 256, ($pow2 - $y - 1) * 256, 256, 256);
+      @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
+
+      image_save($tile_cut, $tile_name);
+    }
   }
 
 }
@@ -80,8 +82,7 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
   // Check if tile has already been created
   watchdog('media_imagezoom', 'checking for tile at ' . $tile_name);
 
-  if (file_exists($tile_name))
-  {
+  if (file_exists($tile_name)) {
     watchdog('media_imagezoom', 'Serving cached tile ' . $tile_name);
 
     if (function_exists('drush_main')) {
@@ -92,14 +93,13 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
 
   $media = file_load($fid);
 
-  if ($media->type == 'image')
-  {
+  if ($media->type == 'image') {
     $image = image_load($media->uri);
-    $full_tile_width = max($image->info['width'],$image->info['height']) / pow(2.0,$zoom_level);
+    $full_tile_width = max($image->info['width'], $image->info['height']) / pow(2.0, $zoom_level);
     
     // Squarify
-    image_crop($image, 0,0, max($image->info['width'],$image->info['height']), max($image->info['width'],$image->info['height']), TRUE );
-    image_crop($image, $x * $full_tile_width, $image->info['height'] - ($y+1) * $full_tile_width, $full_tile_width - 1, $full_tile_width - 1);
+    image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE );
+    image_crop($image, $x * $full_tile_width, $image->info['height'] - ($y + 1) * $full_tile_width, $full_tile_width - 1, $full_tile_width - 1);
     image_resize($image, 256, 256);
     @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
 
@@ -111,7 +111,7 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
   }
 
   drupal_set_message('Cannot tile non-image media');
-  return print_r($media,true);
+  return print_r($media, true);
 }
 
 // Ripped from media.browser.inc - media_browser_list
@@ -191,8 +191,7 @@ function media_imagezoom_getimages() {
 /**
  * Helper function to create a single layer for the OpenLayers renderer.
  */
-function media_imagezoom_build_layer($image_file, $base_layer = FALSE)
-{
+function media_imagezoom_build_layer($image_file, $base_layer = FALSE) {
   $items = array();
   $openlayers_layers = new stdClass;
   $openlayers_layers->disabled = FALSE; /* Edit this to true to make a default openlayers_layers disabled initially */
@@ -391,17 +390,6 @@ function media_imagezoom_openlayers_map_alter(&$map) {
     $image_file = file_load($image['fid']);
     $map['layers']['base_media_imagezoom_' . $image['fid']] = media_imagezoom_build_layer($image_file, true)->data;
     $map['layers']['media_imagezoom_' . $image['fid']] = media_imagezoom_build_layer($image_file, false)->data;
-
-    /*$map['layer_weight']['base_media_imagezoom_' . $image['fid']] = '0';
-    $map['layer_weight']['media_imagezoom_' . $image['fid']] = '0';
-    $map['layer_styles']['base_media_imagezoom_' . $image['fid']] = '0';
-    $map['layer_styles']['media_imagezoom_' . $image['fid']] = '0';
-    $map['layer_styles_select']['base_media_imagezoom_' . $image['fid']] = '0';
-    $map['layer_styles_select']['media_imagezoom_' . $image['fid']] = '0';
-    $map['layer_activated']['base_media_imagezoom_' . $image['fid']] = ($delta==0)?1:0;
-    $map['layer_activated']['media_imagezoom_' . $image['fid']] = ($delta==0)?1:0;
-    $map['layer_switcher']['base_media_imagezoom_' . $image['fid']] = 0;
-    $map['layer_switcher']['media_imagezoom_' . $image['fid']] = 0;*/
   }
 
   return;
