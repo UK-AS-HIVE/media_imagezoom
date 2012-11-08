@@ -121,8 +121,6 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
  * Ripped from media.browser.inc - media_browser_list.
  */
 function media_imagezoom_getimages() {
-  // TODO: temporary just to test iterating media items.
-
   $params = drupal_get_query_parameters();
   // How do we validate these?  I don't know.
   // I think PDO should protect them, but I'm not 100% certain.
