@@ -27,7 +27,7 @@ function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
   // Check if the last tile to be generated for this set already exists.
   // If it does, assume the tiles already exist, and don't waste time
   // recreating.
-  $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0?'0':(intval($pow2 - 1))) . '/' . ($zoom_level == 0?'0':intval($pow2 - 1)) . '.jpg';
+  $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0 ? '0' : (intval($pow2 - 1))) . '/' . ($zoom_level == 0 ? '0' : intval($pow2 - 1)) . '.jpg';
 
   if (file_exists($max_tile_name)) {
     return;
@@ -112,12 +112,16 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
   }
 
   drupal_set_message('Cannot tile non-image media');
-  return print_r($media, true);
+  return print_r($media, TRUE);
 }
 
-// Ripped from media.browser.inc - media_browser_list.
+/**
+ * Enumerate image files.
+ *
+ * Ripped from media.browser.inc - media_browser_list.
+ */
 function media_imagezoom_getimages() {
-  //TODO: temporary just to test iterating media items.
+  // TODO: temporary just to test iterating media items.
 
   $params = drupal_get_query_parameters();
   // How do we validate these?  I don't know.
@@ -198,9 +202,9 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE) {
   $openlayers_layers = new stdClass();
   $openlayers_layers->disabled = FALSE; /* Edit this to true to make a default openlayers_layers disabled initially */
   $openlayers_layers->api_version = 1;
-  $openlayers_layers->name = ($base_layer?'base_':'') . 'media_imagezoom_' . $image_file->fid;
+  $openlayers_layers->name = ($base_layer ? 'base_' : '') . 'media_imagezoom_' . $image_file->fid;
   $openlayers_layers->title = $image_file->filename;
-  $openlayers_layers->description = 'Media Image Zoom' . ($base_layer?' base':'') . ' layer of image ' . $image_file->filename;
+  $openlayers_layers->description = 'Media Image Zoom' . ($base_layer ? ' base' : '') . ' layer of image ' . $image_file->filename;
   $openlayers_layers->data = array(
     'title' => $openlayers_layers->title,
     'baselayer' => $base_layer,
@@ -311,7 +315,7 @@ function media_imagezoom_theme($existing, $type, $theme, $path) {
 function theme_media_imagezoom_formatter_imagezoom_openlayers($element) {
   $map = new stdClass();
   // Edit this to true to make a default map disabled initially.
-  $map->disabled = FALSE; 
+  $map->disabled = FALSE;
   $map->api_version = 1;
   $map->name = 'media_imagezoom_' . $element['element']['files'][0]['fid'];
   $map->title = 'Media Image Zoom - ' . $element['element']['files'][0]['filename'];

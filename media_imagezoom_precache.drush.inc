@@ -52,7 +52,7 @@ function drush_media_imagezoom_precache_precache_media_tiles() {
  */
 function drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_level) {
   $pow2 = pow(2.0, $zoom_level);
-  $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0?'0':(intval($pow2 - 1))) . '/' . ($zoom_level == 0?'0':intval($pow2 - 1)) . '.jpg';
+  $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0 ? '0' : (intval($pow2 - 1))) . '/' . ($zoom_level == 0 ? '0' : intval($pow2 - 1)) . '.jpg';
 
   // If already exists, don't recreate.
   if (file_exists($max_tile_name)) {
