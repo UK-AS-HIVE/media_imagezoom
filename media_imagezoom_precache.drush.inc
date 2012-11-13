@@ -28,18 +28,17 @@ function drush_media_imagezoom_precache_precache_media_tiles() {
   $fids = $q->execute()->fetchCol();
 
   for ($zoom_level = 0; $zoom_level < 6; ++$zoom_level) {
-    drush_print('Computing zoom level ' . $zoom_level . "...\n");
+    drush_log('Computing zoom level ' . $zoom_level . "...\n", 'ok');
 
     foreach ($fids as $delta => $fid) {
       $start_time = microtime(TRUE);
 
-      drush_print("...image $fid (level $zoom_level) ($delta of " . count($fids) . " - " . intval($delta * 100.0 / count($fids)) . "%)");
       // Slower: _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level);
       drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_level);
 
       $elapsed_time = microtime(TRUE) - $start_time;
-      drush_print('(took ' . $elapsed_time . " seconds)");
-      drush_print("              \r");
+
+      drush_log("Computed zoom level $zoom_level for image $fid in $elapsed_time seconds", 'ok');
     }
   }
 }
