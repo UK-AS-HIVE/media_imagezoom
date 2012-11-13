@@ -23,11 +23,12 @@ function media_imagezoom_menu() {
  * @deprecated in favor of the drush commands
  */
 function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
+  $tile_root = variable_get('media_imagezoom_tilepath','public://tiles');
   $pow2 = pow(2.0, $zoom_level);
   // Check if the last tile to be generated for this set already exists.
   // If it does, assume the tiles already exist, and don't waste time
   // recreating.
-  $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0 ? '0' : (intval($pow2 - 1))) . '/' . ($zoom_level == 0 ? '0' : intval($pow2 - 1)) . '.jpg';
+  $max_tile_name = $tile_root . '/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0 ? '0' : (intval($pow2 - 1))) . '/' . ($zoom_level == 0 ? '0' : intval($pow2 - 1)) . '.jpg';
 
   if (file_exists($max_tile_name)) {
     return;
@@ -48,13 +49,13 @@ function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
   image_resize($image, 256 * $pow2, 256 * $pow2);
 
   // Save temporary image.
-  image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
+  image_save($image, $tile_root . '/tmpResizedForCutting.jpg');
 
   for ($x = 0; $x < $pow2; ++$x) {
     for ($y = 0; $y < $pow2; ++$y) {
-      $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+      $tile_name = $tile_root . '/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
-      $tile_cut = image_load('public://tiles/tmpResizedForCutting.jpg');
+      $tile_cut = image_load($tile_root . '/tmpResizedForCutting.jpg');
 
       image_crop($tile_cut, $x * 256, ($pow2 - $y - 1) * 256, 256, 256);
       @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
@@ -73,18 +74,24 @@ function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
  * @deprecated It's absurdly faster to let the web server serve tiles
  * directly, and simply fail if they haven't been generated yet, rather
  * than bootstrapping Drupal to serve each tile.
+ * 
+ * @param $fid          File ID of the image file to cut the tile from
+ * @param $zoom_level   The zoom level of the requested tile
+ * @param $x            The x offset of the tile
+ *                        (range [0,pow(2,$zoom_level)-1])
+ * @param $y            The y offset of the tile.  Note that 0 is the
+ *                        bottom row of the image, not the top,
+ *                        according to TMS spec.
+ *                        (range [0,pow(2,$zoom_level)-1])
  */
 function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
   $y = intval(str_replace('.jpg', '', $y));
 
 
-  $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
-
-  // Check if tile has already been created.
-  watchdog('media_imagezoom', 'checking for tile at ' . $tile_name);
+  $tile_name = variable_get('media_imagezoom_tilepath','public://tiles') . '/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
   if (file_exists($tile_name)) {
-    watchdog('media_imagezoom', 'Serving cached tile ' . $tile_name);
+    watchdog('media_imagezoom', 'Serving cached tile ' . $tile_name, array(), WATCHDOG_INFO);
 
     if (function_exists('drush_main')) {
       return;
@@ -102,6 +109,8 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
     image_crop($image, 0, 0, max($image->info['width'], $image->info['height']), max($image->info['width'], $image->info['height']), TRUE);
     image_crop($image, $x * $full_tile_width, $image->info['height'] - ($y + 1) * $full_tile_width, $full_tile_width - 1, $full_tile_width - 1);
     image_resize($image, 256, 256);
+    // Ensure the directory is created, recursively if necessary.
+    // Ignore warning if it already exists.
     @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
 
     image_save($image, $tile_name);
@@ -110,9 +119,11 @@ function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
     }
     drupal_goto(file_create_url($tile_name));
   }
-
-  drupal_set_message('Cannot tile non-image media');
-  return print_r($media, TRUE);
+  else {
+    if (module_exists('devel') && function_exists('dpm')) {
+      dpm($media, 'Cannot tile non-image media');
+    }
+  }
 }
 
 /**
@@ -206,7 +217,7 @@ function media_imagezoom_build_layer($image_file, $base_layer = FALSE) {
   $openlayers_layers->data = array(
     'title' => $openlayers_layers->title,
     'baselayer' => $base_layer,
-    'base_url' => base_path() . 'sites/default/files/tiles/tms/',
+    'base_url' => file_create_url(variable_get('media_imagezoom_tilepath','public://tiles') . '/tms') . '/',
     'layername' => $image_file->fid,
     'type' => 'jpg',
     'transparent' => TRUE,

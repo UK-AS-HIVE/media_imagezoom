@@ -51,8 +51,9 @@ function drush_media_imagezoom_precache_precache_media_tiles() {
  * faster in most cases.
  */
 function drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_level) {
+  $tile_root = variable_get('media_imagezoom_tilepath','public://tiles');
   $pow2 = pow(2.0, $zoom_level);
-  $max_tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0 ? '0' : (intval($pow2 - 1))) . '/' . ($zoom_level == 0 ? '0' : intval($pow2 - 1)) . '.jpg';
+  $max_tile_name = $tile_root . '/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0 ? '0' : (intval($pow2 - 1))) . '/' . ($zoom_level == 0 ? '0' : intval($pow2 - 1)) . '.jpg';
 
   // If already exists, don't recreate.
   if (file_exists($max_tile_name)) {
@@ -73,23 +74,23 @@ function drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_leve
   image_resize($image, 256 * $pow2, 256 * $pow2);
 
   // Save temporary image.
-  image_save($image, 'public://tiles/tmpResizedForCutting.jpg');
+  image_save($image, $tile_root . '/tmpResizedForCutting.jpg');
 
   // Now batch crop with ImageMagick on the commandline.
-  exec('convert ' . drupal_realpath('public://tiles/tmpResizedForCutting.jpg') . ' -crop 256x256 ' . drupal_realpath('public://tiles/tmpTile.jpg'));
+  exec('convert ' . drupal_realpath($tile_root . '/tmpResizedForCutting.jpg') . ' -crop 256x256 ' . drupal_realpath($tile_root . '/tmpTile.jpg'));
 
   $i = 0;
 
   for ($y = $pow2 - 1; $y >= 0; --$y) {
     for ($x = 0; $x < $pow2; ++$x) {
-      $tile_name = 'public://tiles/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
+      $tile_name = $tile_root . '/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . $x . '/' . $y . '.jpg';
 
       @drupal_mkdir(dirname($tile_name), NULL, TRUE, NULL);
       if ($zoom_level == 0) {
-        rename(drupal_realpath('public://tiles/tmpTile.jpg'), drupal_realpath($tile_name));
+        rename(drupal_realpath($tile_root . '/tmpTile.jpg'), drupal_realpath($tile_name));
       }
       else {
-        rename(drupal_realpath('public://tiles/tmpTile-' . $i . '.jpg'), drupal_realpath($tile_name));
+        rename(drupal_realpath($tile_root . '/tmpTile-' . $i . '.jpg'), drupal_realpath($tile_name));
       }
 
       $i++;
