@@ -50,7 +50,7 @@ function drush_media_imagezoom_precache_precache_media_tiles() {
  * faster in most cases.
  */
 function drush_media_imagezoom_generate_zoomlevel_tiles_method2($fid, $zoom_level) {
-  $tile_root = variable_get('media_imagezoom_tilepath','public://tiles');
+  $tile_root = variable_get('media_imagezoom_tilepath', 'public://tiles');
   $pow2 = pow(2.0, $zoom_level);
   $max_tile_name = $tile_root . '/tms/1.0.0/' . $fid . '/' . $zoom_level . '/' . ($zoom_level == 0 ? '0' : (intval($pow2 - 1))) . '/' . ($zoom_level == 0 ? '0' : intval($pow2 - 1)) . '.jpg';
 

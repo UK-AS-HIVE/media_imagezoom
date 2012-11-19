@@ -6,14 +6,14 @@
  */
 
 /**
- * Implements form callback
+ * Implements form callback.
  */
 function media_imagezoom_admin_form() {
   $form['tile_path'] = array(
     '#type' => 'textfield',
     '#title' => 'Tile storage URI',
     '#description' => 'Base path for tile storage.  All generated tiles will be stored in subdirectories here.',
-    '#default_value' => variable_get('media_imagezoom_tilepath','public://tiles'),
+    '#default_value' => variable_get('media_imagezoom_tilepath', 'public://tiles'),
     '#required' => TRUE,
   );
 
@@ -31,12 +31,18 @@ function media_imagezoom_admin_form() {
   return $form;
 }
 
+/**
+ * Admin form validation callback.
+ */
 function media_imagezoom_admin_form_validate($form, &$form_state) {
   if (!file_stream_wrapper_get_instance_by_uri(trim($form_state['values']['tile_path']))) {
     form_set_error('tile_path', 'Invalid or unrecognized base URI for tile storage.  Something like public://tiles is recommended.');
   }
 }
 
+/**
+ * Admin form submit callback.
+ */
 function media_imagezoom_admin_form_submit($form, &$form_state) {
   $tile_path = trim($form_state['values']['tile_path']);
 
