@@ -8,6 +8,15 @@
  * Implements hook_menu().
  */
 function media_imagezoom_menu() {
+  $items['admin/config/media/media_imagezoom'] = array(
+    'title' => 'Media Imagezoom',
+    'description' => 'Configuration for Media Imagezoom',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('media_imagezoom_admin_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'media_imagezoom.admin.inc',
+  );
   $items['media/tms/1.0.0/%/%/%/%'] = array(
     'page callback' => '_media_imagezoom_tile',
     'page arguments' => array(3,4,5,6),
