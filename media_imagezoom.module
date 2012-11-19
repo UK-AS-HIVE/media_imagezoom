@@ -84,14 +84,20 @@ function _media_imagezoom_generate_zoomlevel_tiles($fid, $zoom_level) {
  * directly, and simply fail if they haven't been generated yet, rather
  * than bootstrapping Drupal to serve each tile.
  *
- * @param int $fid          File ID of the image file to cut the tile from
- * @param int $zoom_level   The zoom level of the requested tile
- * @param int $x            The x offset of the tile
- *                            (range [0,pow(2,$zoom_level)-1])
- * @param int $y            The y offset of the tile.  Note that 0 is the
- *                            bottom row of the image, not the top,
- *                            according to TMS spec.
- *                            (range [0,pow(2,$zoom_level)-1])
+ * @param int $fid
+ *   File ID of the image file to cut the tile from
+ *
+ * @param int $zoom_level
+ *   The zoom level of the requested tile
+ *
+ * @param int $x
+ *   The x offset of the tile
+ *   (range [0,pow(2,$zoom_level)-1])
+ *
+ * @param int $y
+ *   The y offset of the tile.  Note that 0 is the
+ *   bottom row of the image, not the top, according to TMS spec.
+ *   (range [0,pow(2,$zoom_level)-1])
  */
 function _media_imagezoom_tile($fid, $zoom_level, $x, $y) {
   $y = intval(str_replace('.jpg', '', $y));
