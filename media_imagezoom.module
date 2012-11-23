@@ -213,8 +213,6 @@ function media_imagezoom_getimages() {
     }
   }
 
-  print (count($images) . "\n");
-
   return $images;
 }
 
