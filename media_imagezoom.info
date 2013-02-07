@@ -5,5 +5,3 @@ core = 7.x
 dependencies[] = media (2.x)
 dependencies[] = openlayers
 
-; Information added by drupal.org packaging script on 2011-10-12
-core = "7.x"
